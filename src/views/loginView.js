@@ -22,7 +22,7 @@ export function renderLoginView(container) {
           <button type="submit" class="btn-primary" id="btn-submit">Ingresar</button>
         </form>
         <p class="register-prompt">
-          ¿Usuario de prueba? Usa: <b>usuario.prueba@email.com</b>
+          ¿No tienes una cuenta? <a href="/register" data-link>Regístrate aquí</a>
         </p>
       </div>
     </section>

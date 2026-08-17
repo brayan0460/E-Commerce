@@ -14,6 +14,7 @@ export function renderNavbar(container) {
       `
       : `
         <li><a href="/login" data-link>Iniciar Sesión</a></li>
+        <li><a href="/register" data-link>Registrarse</a></li>
       `;
 
     container.innerHTML = `

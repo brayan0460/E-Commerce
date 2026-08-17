@@ -3,10 +3,12 @@ import { renderCatalogView } from './views/catalogView.js';
 import { renderLoginView } from './views/loginView.js';
 import { renderCartView } from './views/cartView.js'; // Importar vista
 // 1. Mapa de rutas asociadas a sus vistas
+import { renderRegisterView } from './views/registerView.js'; // <--- IMPORTAR
 const routes = {
   '/': renderCatalogView,         // La página principal muestra el catálogo de ropa
   '/catalogo': renderCatalogView, // Ruta alternativa para el catálogo
-  '/login': renderLoginView,
+  '/login': renderLoginView,      // Ruta para el inicio de sesión
+  '/register': renderRegisterView, // Ruta para el registro de usuarios
   '/cart': renderCartView,        // Ruta para el carrito de compras
 };
 
@@ -42,9 +44,14 @@ export class Router {
 
   static async handleRoute(pathname) {
     const container = document.getElementById('app');
-    const view = routes[pathname] || routes['/']; // Fallback a inicio si la ruta no existe
+    if (!container) return;
 
-    container.innerHTML = ''; // Limpiar la vista anterior
-    await view(container);    // Ejecutar y renderizar la nueva vista (asíncrona)
+    let cleanPath = pathname.replace('/index.html', '');
+    if (cleanPath === '') cleanPath = '/';
+
+    const view = routes[cleanPath] || routes['/'];
+
+    container.innerHTML = '';
+    await view(container);
   }
 }

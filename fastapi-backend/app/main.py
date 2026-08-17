@@ -52,23 +52,46 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# app/main.py
 @app.post("/auth/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register_user(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
+    # 1. Verificar si el correo ya existe
     query = select(User).where(User.email == user_data.email)
     result = await db.execute(query)
     if result.scalars().first():
-        raise HTTPException(status_code=400, detail="El correo electrónico ya está registrado.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="El correo electrónico ya se encuentra registrado."
+        )
     
-    hashed_pwd = hash_password(user_data.password)
-    new_user = User(email=user_data.email, hashed_password=hashed_pwd)
+    # 2. Hashear contraseña
+    try:
+        hashed_pwd = hash_password(user_data.password)
+    except Exception as e:
+        print(f"[Error en hash_password]: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail=f"Error en cifrado de clave: {str(e)}"
+        )
+
+    # 3. Crear y persistir el usuario
+    new_user = User(
+        email=user_data.email, 
+        hashed_password=hashed_pwd,
+        is_active=True
+    )
     db.add(new_user)
     
     try:
         await db.commit()
         await db.refresh(new_user)
-    except Exception:
+    except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=500, detail="Error interno al guardar usuario.")
+        print(f"[Error exacto en db.commit / users]: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail=f"Error en base de datos: {str(e)}"
+        )
         
     return new_user
 
