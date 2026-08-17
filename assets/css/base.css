@@ -1,0 +1,384 @@
+/* ==========================================================================
+   1. VARIABLES Y RESET (Custom Properties)
+   ========================================================================== */
+:root {
+  /* Paleta de Colores (Moderna y Neutra) */
+  --primary-color: #2c3e50;
+  --secondary-color: #3498db;
+  --accent-color: #e74c3c;
+  --bg-color: #f8f9fa;
+  --surface-color: #ffffff;
+  --text-dark: #333333;
+  --text-light: #7f8c8d;
+  --border-color: #e0e0e0;
+
+  /* Espaciados y Bordes */
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 2rem;
+  --border-radius: 8px;
+  
+  /* Sombras suaves para dar profundidad */
+  --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* Reset básico para evitar diferencias entre navegadores */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-dark);
+  line-height: 1.6;
+}
+
+/* Contenedor principal de inyección (Vanilla JS) */
+#app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--spacing-lg) var(--spacing-md);
+}
+
+/* ==========================================================================
+   2. BARRA DE NAVEGACIÓN (Navbar)
+   ========================================================================== */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md) 5%;
+  background-color: var(--primary-color);
+  color: white;
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.logo a {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: white;
+  text-decoration: none;
+  letter-spacing: 1px;
+}
+
+.nav-links {
+  list-style: none;
+  display: flex;
+  gap: var(--spacing-lg);
+  align-items: center;
+}
+
+.nav-links a {
+  color: white;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.nav-links a:hover {
+  color: var(--secondary-color);
+}
+
+/* Badge del carrito */
+.cart-badge {
+  background-color: var(--accent-color);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin-left: 4px;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   3. CATÁLOGO DE PRODUCTOS (CSS Grid)
+   ========================================================================== */
+.catalog-section h2 {
+  text-align: center;
+  margin-bottom: var(--spacing-lg);
+  color: var(--primary-color);
+  font-size: 2rem;
+}
+
+.grid-container {
+  display: grid;
+  /* Auto-fill crea columnas responsivas sin Media Queries pesadas */
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+/* Tarjeta individual */
+.product-card {
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.product-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-md);
+}
+
+.product-image img {
+  width: 100%;
+  height: 250px;
+  object-fit: cover; /* Evita que la imagen se deforme */
+  border-bottom: 1px solid var(--border-color);
+}
+
+.product-info {
+  padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1; /* Empuja el botón hacia abajo */
+}
+
+.category-badge {
+  align-self: flex-start;
+  background-color: #f1f2f6;
+  color: var(--text-light);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  margin-bottom: var(--spacing-sm);
+}
+
+.product-info h3 {
+  font-size: 1.1rem;
+  margin-bottom: var(--spacing-sm);
+}
+
+.price {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--primary-color);
+  margin-bottom: var(--spacing-md);
+}
+
+/* ==========================================================================
+   4. BOTONES (UI Elements)
+   ========================================================================== */
+.btn-add-cart, .btn-primary, .btn-remove {
+  padding: 10px 15px;
+  border: none;
+  border-radius: var(--border-radius);
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  width: 100%;
+  text-align: center;
+}
+
+.btn-add-cart, .btn-primary {
+  background-color: var(--secondary-color);
+  color: white;
+  margin-top: auto; /* Ancla el botón al fondo de la tarjeta */
+}
+
+.btn-add-cart:hover:not(:disabled), .btn-primary:hover {
+  background-color: #2980b9;
+}
+
+.btn-add-cart:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn-add-cart:disabled {
+  background-color: #bdc3c7;
+  cursor: not-allowed;
+}
+
+/* Feedback visual al hacer clic */
+.btn-add-cart.btn-added {
+  background-color: #27ae60;
+}
+
+.btn-remove {
+  background-color: var(--accent-color);
+  color: white;
+}
+
+.btn-remove:hover {
+  background-color: #c0392b;
+}
+
+/* ==========================================================================
+   5. CARRITO DE COMPRAS (Flexbox List)
+   ========================================================================== */
+.cart-section h2 {
+  margin-bottom: var(--spacing-lg);
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: var(--spacing-sm);
+}
+
+.cart-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.cart-item {
+  display: flex;
+  align-items: center;
+  background-color: var(--surface-color);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-sm);
+  gap: var(--spacing-lg);
+}
+
+.cart-item img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.item-details {
+  flex-grow: 1; /* Ocupa el espacio disponible */
+}
+
+.item-details h4 {
+  font-size: 1.1rem;
+  margin-bottom: 4px;
+}
+
+.item-details p {
+  color: var(--text-light);
+  font-size: 0.9rem;
+}
+
+.cart-item .btn-remove {
+  width: auto;
+  padding: 8px 12px;
+}
+
+.cart-summary {
+  background-color: var(--surface-color);
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-md);
+  text-align: right;
+}
+
+.cart-summary h3 {
+  font-size: 1.5rem;
+  margin-bottom: var(--spacing-md);
+}
+
+.cart-summary button {
+  width: auto;
+  margin-left: var(--spacing-sm);
+  display: inline-block;
+}
+
+/* Responsividad para Carrito en Móviles */
+@media (max-width: 600px) {
+  .cart-item {
+    flex-direction: column;
+    text-align: center;
+  }
+  .cart-item img {
+    width: 120px;
+    height: 120px;
+  }
+  .cart-item .btn-remove {
+    width: 100%;
+  }
+  .cart-summary {
+    text-align: center;
+  }
+  .cart-summary button {
+    width: 100%;
+    margin: var(--spacing-sm) 0;
+  }
+}
+
+/* ==========================================================================
+   6. FORMULARIOS (Login / Registro)
+   ========================================================================== */
+.login-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 70vh;
+}
+
+.login-card {
+  background-color: var(--surface-color);
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-md);
+  width: 100%;
+  max-width: 400px;
+  border: 1px solid var(--border-color);
+}
+
+.login-card h2 {
+  text-align: center;
+  margin-bottom: var(--spacing-lg);
+  color: var(--primary-color);
+}
+
+.form-group {
+  margin-bottom: var(--spacing-md);
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: var(--spacing-sm);
+  font-weight: 500;
+  color: var(--primary-color);
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--secondary-color);
+}
+
+.error-msg {
+  color: var(--accent-color);
+  font-size: 0.9rem;
+  margin-bottom: var(--spacing-sm);
+  text-align: center;
+  min-height: 20px;
+  font-weight: 500;
+}
+
+.register-prompt {
+  text-align: center;
+  margin-top: var(--spacing-md);
+  font-size: 0.9rem;
+  color: var(--text-light);
+}

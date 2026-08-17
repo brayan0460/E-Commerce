@@ -1,0 +1,24 @@
+# Entorno Virtual Python
+.venv/
+venv/
+ENV/
+env/
+
+# Archivos de Entorno y Credenciales
+.env
+*.env
+
+# Cache de Python y Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Archivos temporales de Sistema Operativo y Editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log
