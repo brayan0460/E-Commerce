@@ -1,5 +1,10 @@
 // src/views/cartView.js
 import { store } from '../state/store.js';
+import { ApiService } from '../services/api.service.js';
+import { sanitizeHTML } from '../utils/sanitizer.js';
+import { resolveImageUrl } from '../config/constants.js';
+import { showToast } from '../components/toast.js';
+import { Router } from '../router.js';
 
 export function renderCartView(container) {
   const render = (state) => {
@@ -24,9 +29,9 @@ export function renderCartView(container) {
         <div class="cart-list">
           ${cart.map(item => `
             <div class="cart-item">
-              <img src="${item.image_url || './assets/images/placeholder.png'}" alt="${item.name}">
+              <img src="${resolveImageUrl(item.image_url)}" alt="${sanitizeHTML(item.name)}">
               <div class="item-details">
-                <h4>${item.name}</h4>
+                <h4>${sanitizeHTML(item.name)}</h4>
                 <p>Precio: $${item.price.toLocaleString('es-CL')}</p>
                 <p>Cantidad: ${item.quantity}</p>
                 <p>Subtotal: $${(item.price * item.quantity).toLocaleString('es-CL')}</p>
@@ -38,6 +43,7 @@ export function renderCartView(container) {
 
         <div class="cart-summary">
           <h3>Total: $${total.toLocaleString('es-CL')}</h3>
+          <div id="checkout-error" class="error-msg"></div>
           <button id="btn-clear" class="btn-secondary">Vaciar Carrito</button>
           <button id="btn-checkout" class="btn-primary">Procesar Compra</button>
         </div>
@@ -54,6 +60,40 @@ export function renderCartView(container) {
 
     container.querySelector('#btn-clear').addEventListener('click', () => {
       store.clearCart();
+    });
+
+    const checkoutBtn = container.querySelector('#btn-checkout');
+    const errorDiv = container.querySelector('#checkout-error');
+
+    checkoutBtn.addEventListener('click', async () => {
+      if (!store.getState().isAuthenticated) {
+        showToast('Inicia sesión para finalizar la compra', 'error');
+        Router.navigateTo('/login');
+        return;
+      }
+
+      errorDiv.textContent = '';
+      const originalText = checkoutBtn.textContent;
+      checkoutBtn.textContent = 'Procesando...';
+      checkoutBtn.disabled = true;
+
+      try {
+        const items = store.getState().cart.map((item) => ({
+          product_id: item.id,
+          quantity: item.quantity
+        }));
+
+        const order = await ApiService.post('/orders/checkout', { items });
+
+        store.clearCart();
+        showToast(`¡Compra confirmada! Pedido #${order.id}`, 'success');
+        Router.navigateTo('/perfil');
+      } catch (error) {
+        errorDiv.textContent = error.message || 'No se pudo procesar la compra.';
+      } finally {
+        checkoutBtn.textContent = originalText;
+        checkoutBtn.disabled = false;
+      }
     });
   };
 

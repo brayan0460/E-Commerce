@@ -1,23 +1,49 @@
 // src/views/catalogView.js
-// ==============================================================================
-// ARQUITECTURA FRONTEND: VISTA DE CATÁLOGO
-// 1. Separación de responsabilidades: Esta vista solo se encarga de inyectar 
-//    el HTML y solicitar los datos al servicio centralizado.
-// 2. Manejo asíncrono seguro: El uso de try/catch previene que la UI colapse 
-//    si el backend de FastAPI está caído o la red falla.
-// 3. Inyección dinámica: Se utiliza map() para iterar sobre la respuesta de 
-//    la base de datos y construir los componentes HTML de forma eficiente.
-// ==============================================================================
-// src/views/catalogView.js
 import { ApiService } from '../services/api.service.js';
 import { store } from '../state/store.js';
+import { sanitizeHTML } from '../utils/sanitizer.js';
+import { resolveImageUrl } from '../config/constants.js';
+import { showToast } from '../components/toast.js';
+
+const SKELETON_CARD = `
+  <div class="product-card skeleton-card">
+    <div class="product-image skeleton-block"></div>
+    <div class="product-info">
+      <div class="skeleton-line skeleton-line-sm"></div>
+      <div class="skeleton-line"></div>
+      <div class="skeleton-line skeleton-line-sm"></div>
+    </div>
+  </div>
+`;
+
+function renderProductCard(product) {
+  return `
+    <article class="product-card">
+      <div class="product-image">
+        <img src="${resolveImageUrl(product.image_url)}" alt="${sanitizeHTML(product.name)}" loading="lazy">
+      </div>
+      <div class="product-info">
+        <span class="category-badge">${sanitizeHTML(product.category)}</span>
+        <h3>${sanitizeHTML(product.name)}</h3>
+        <p class="price">$${product.price.toLocaleString('es-CL')}</p>
+        <button
+          class="btn-add-cart"
+          data-id="${product.id}"
+          ${product.stock === 0 ? 'disabled' : ''}
+        >
+          ${product.stock > 0 ? 'Añadir al carrito' : 'Agotado'}
+        </button>
+      </div>
+    </article>
+  `;
+}
 
 export async function renderCatalogView(container) {
   container.innerHTML = `
     <section class="catalog-section">
       <h2>Catálogo de Ropa</h2>
       <div id="product-grid" class="grid-container">
-        <p>Cargando inventario...</p>
+        ${SKELETON_CARD.repeat(6)}
       </div>
     </section>
   `;
@@ -28,42 +54,23 @@ export async function renderCatalogView(container) {
     const products = await ApiService.get('/products/');
 
     if (products.length === 0) {
-      grid.innerHTML = '<p>No hay productos disponibles en este momento.</p>';
+      grid.innerHTML = '<p class="empty-state">No hay productos disponibles en este momento.</p>';
       return;
     }
 
-    // Renderizar productos
-    grid.innerHTML = products.map(product => `
-      <article class="product-card">
-        <div class="product-image">
-          <img src="${product.image_url || './assets/images/placeholder.png'}" alt="${product.name}">
-        </div>
-        <div class="product-info">
-          <span class="category-badge">${product.category}</span>
-          <h3>${product.name}</h3>
-          <p class="price">$${product.price.toLocaleString('es-CL')}</p>
-          <button 
-            class="btn-add-cart" 
-            data-id="${product.id}" 
-            ${product.stock === 0 ? 'disabled' : ''}
-          >
-            ${product.stock > 0 ? 'Añadir al carrito' : 'Agotado'}
-          </button>
-        </div>
-      </article>
-    `).join('');
+    grid.innerHTML = products.map(renderProductCard).join('');
 
     // Escuchador de eventos delegado para añadir al carrito
     grid.addEventListener('click', (e) => {
       const button = e.target.closest('.btn-add-cart');
       if (button && !button.disabled) {
         const productId = parseInt(button.getAttribute('data-id'), 10);
-        const selectedProduct = products.find(p => p.id === productId);
+        const selectedProduct = products.find((p) => p.id === productId);
 
         if (selectedProduct) {
           store.addToCart(selectedProduct);
-          
-          // Feedback visual temporal en el botón
+          showToast(`"${selectedProduct.name}" añadido al carrito`, 'success');
+
           const originalText = button.textContent;
           button.textContent = '¡Añadido! ✓';
           button.classList.add('btn-added');
@@ -76,6 +83,6 @@ export async function renderCatalogView(container) {
     });
 
   } catch (error) {
-    grid.innerHTML = `<p class="error-msg">Error al cargar el catálogo: ${error.message}</p>`;
+    grid.innerHTML = `<p class="error-msg">Error al cargar el catálogo: ${sanitizeHTML(error.message)}</p>`;
   }
 }

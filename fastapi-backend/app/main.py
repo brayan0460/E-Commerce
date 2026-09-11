@@ -1,48 +1,35 @@
-from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
+import os
 from contextlib import asynccontextmanager
-from app.core.database import engine, Base, get_db
-from app.core.security import hash_password, verify_password, create_access_token
-from app.models.user_model import User
-from app.schemas.user_schema import UserCreate, UserResponse
-from app.schemas.auth_schema import LoginRequest, TokenResponse
-from typing import List
-from app.models.product_model import Product
-from app.schemas.product_schema import ProductCreate, ProductResponse
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-import jwt
-from app.core.security import SECRET_KEY, ALGORITHM
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
-security = HTTPBearer()
+from app.core.database import engine, Base, run_startup_migrations
+from app.api.v1.auth import router as auth_router
+from app.api.v1.products import router as products_router
+from app.api.v1.orders import router as orders_router
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: AsyncSession = Depends(get_db)):
-    token = credentials.credentials
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            raise HTTPException(status_code=401, detail="Token inválido")
-    except jwt.PyJWTError:
-        raise HTTPException(status_code=401, detail="Token expirado o corrupto")
-    
-    query = select(User).where(User.email == email)
-    result = await db.execute(query)
-    user = result.scalars().first()
-    
-    if user is None:
-        raise HTTPException(status_code=401, detail="Usuario no encontrado")
-    return user
+BACKEND_DIR = os.path.dirname(os.path.dirname(__file__))  # .../fastapi-backend
+# El proyecto es un monorepo: el frontend (index.html, src/, assets/) vive un
+# nivel arriba de fastapi-backend/. Servirlo desde el mismo proceso FastAPI
+# evita CORS y permite desplegar todo como un único servicio (más barato/simple).
+FRONTEND_DIR = os.path.dirname(BACKEND_DIR)
+STATIC_DIR = os.path.join(BACKEND_DIR, "static")
+INDEX_HTML = os.path.join(FRONTEND_DIR, "index.html")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    os.makedirs(os.path.join(STATIC_DIR, "uploads", "products"), exist_ok=True)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await run_startup_migrations(conn)
     yield
     await engine.dispose()
 
-app = FastAPI(title="API Tienda de Ropa", lifespan=lifespan)
+
+app = FastAPI(title="API Tienda de Ropa", version="1.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -52,89 +39,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# app/main.py
-@app.post("/auth/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register_user(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
-    # 1. Verificar si el correo ya existe
-    query = select(User).where(User.email == user_data.email)
-    result = await db.execute(query)
-    if result.scalars().first():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="El correo electrónico ya se encuentra registrado."
-        )
-    
-    # 2. Hashear contraseña
-    try:
-        hashed_pwd = hash_password(user_data.password)
-    except Exception as e:
-        print(f"[Error en hash_password]: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=f"Error en cifrado de clave: {str(e)}"
-        )
+# Imágenes subidas por el panel de administración
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
-    # 3. Crear y persistir el usuario
-    new_user = User(
-        email=user_data.email, 
-        hashed_password=hashed_pwd,
-        is_active=True
-    )
-    db.add(new_user)
-    
-    try:
-        await db.commit()
-        await db.refresh(new_user)
-    except Exception as e:
-        await db.rollback()
-        print(f"[Error exacto en db.commit / users]: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=f"Error en base de datos: {str(e)}"
-        )
-        
-    return new_user
+# Rutas de la API (deben registrarse antes que el catch-all del frontend)
+app.include_router(auth_router)
+app.include_router(products_router)
+app.include_router(orders_router)
 
-@app.post("/auth/login", response_model=TokenResponse)
-async def login(credentials: LoginRequest, db: AsyncSession = Depends(get_db)):
-    query = select(User).where(User.email == credentials.email)
-    result = await db.execute(query)
-    user = result.scalars().first()
-    
-    if not user or not verify_password(credentials.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Credenciales incorrectas"
-        )
-    
-    access_token = create_access_token(data={"sub": user.email, "id": user.id})
-    return TokenResponse(access_token=access_token)
+# Archivos estáticos del frontend (JS/CSS/imágenes propias del sitio)
+app.mount("/src", StaticFiles(directory=os.path.join(FRONTEND_DIR, "src")), name="frontend-src")
+app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_DIR, "assets")), name="frontend-assets")
 
-# Endpoints a agregar al final del archivo:
-# app/main.py
-@app.get("/products/", response_model=List[ProductResponse])
-async def list_products(skip: int = 0, limit: int = 20, db: AsyncSession = Depends(get_db)):
-    try:
-        query = select(Product).where(Product.is_available.is_(True)).offset(skip).limit(limit)
-        result = await db.execute(query)
-        products = result.scalars().all()
-        return products
-    except Exception as e:
-        print(f"[Error interno en /products/]: {e}")
-        raise HTTPException(status_code=500, detail=f"Error en base de datos: {str(e)}")
 
-@app.post("/products/", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
-async def create_product(
-    product_data: ProductCreate, 
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user) # <- Bloqueo de seguridad aquí
-):
-    new_product = Product(**product_data.model_dump())
-    db.add(new_product)
-    try:
-        await db.commit()
-        await db.refresh(new_product)
-    except Exception:
-        await db.rollback()
-        raise HTTPException(status_code=500, detail="Error de persistencia de datos.")
-    return new_product
+@app.get("/", include_in_schema=False)
+async def serve_index():
+    return FileResponse(INDEX_HTML)
+
+
+# Fallback de SPA: cualquier ruta que no sea de la API ni un archivo estático
+# devuelve index.html para que el router del frontend (basado en pushState)
+# la resuelva. Así /admin, /perfil, /cart, etc. funcionan también al recargar
+# la página directamente, no solo navegando por clics dentro de la app.
+@app.get("/{full_path:path}", include_in_schema=False)
+async def spa_fallback(full_path: str):
+    return FileResponse(INDEX_HTML)

@@ -11,9 +11,12 @@ import { API_BASE_URL } from '../config/constants.js';
 
 export class ApiService {
   static async request(endpoint, options = {}) {
-    // 1. Cabeceras por defecto
+    const isFormData = options.body instanceof FormData;
+
+    // 1. Cabeceras por defecto. Si el body es FormData (subida de archivos),
+    // NO fijamos Content-Type: el navegador debe generar el boundary del multipart.
     const headers = {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       'Accept': 'application/json',
       ...options.headers
     };
@@ -63,7 +66,7 @@ export class ApiService {
     return this.request(endpoint, {
       method: 'POST',
       headers,
-      body: JSON.stringify(body)
+      body: body instanceof FormData ? body : JSON.stringify(body)
     });
   }
 
@@ -71,7 +74,7 @@ export class ApiService {
     return this.request(endpoint, {
       method: 'PUT',
       headers,
-      body: JSON.stringify(body)
+      body: body instanceof FormData ? body : JSON.stringify(body)
     });
   }
 

@@ -1,6 +1,5 @@
 // src/views/loginView.js
-import { ApiService } from '../services/api.service.js';
-import { store } from '../state/store.js';
+import { AuthService } from '../services/auth.service.js';
 import { Router } from '../router.js';
 
 export function renderLoginView(container) {
@@ -46,21 +45,10 @@ export function renderLoginView(container) {
     const password = form.password.value;
 
     try {
-      // 3. Petición POST al backend en FastAPI
-      const response = await ApiService.post('/auth/login', { email, password });
-      
-      // 4. Guardar credenciales en el almacenamiento local del navegador
-      localStorage.setItem('access_token', response.access_token);
-      localStorage.setItem('user_data', JSON.stringify({ email }));
+      // 3. Autenticar contra el backend (AuthService persiste sesión y actualiza el store)
+      await AuthService.login(email, password);
 
-      // 5. Actualizar el estado global (Esto hará que cambie la Navbar automáticamente)
-      store.setState({ 
-        isAuthenticated: true, 
-        token: response.access_token, 
-        user: { email } 
-      });
-
-      // 6. Redirigir al usuario logueado hacia el catálogo
+      // 4. Redirigir al usuario logueado hacia el catálogo
       Router.navigateTo('/catalogo');
 
     } catch (error) {

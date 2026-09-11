@@ -1,6 +1,5 @@
 // src/views/registerView.js
-import { ApiService } from '../services/api.service.js';
-import { store } from '../state/store.js';
+import { AuthService } from '../services/auth.service.js';
 import { Router } from '../router.js';
 
 export function renderRegisterView(container) {
@@ -59,24 +58,13 @@ export function renderRegisterView(container) {
 
     try {
       // 1. Crear usuario en la base de datos
-      await ApiService.post('/auth/register', { email, password });
+      await AuthService.register(email, password);
 
       // 2. Auto-login: autenticarse de inmediato para obtener el token JWT
       successDiv.textContent = '¡Cuenta creada! Iniciando sesión...';
-      const authResponse = await ApiService.post('/auth/login', { email, password });
+      await AuthService.login(email, password);
 
-      // 3. Persistir sesión
-      localStorage.setItem('access_token', authResponse.access_token);
-      localStorage.setItem('user_data', JSON.stringify({ email }));
-
-      // 4. Actualizar estado reactivo
-      store.setState({
-        isAuthenticated: true,
-        token: authResponse.access_token,
-        user: { email }
-      });
-
-      // 5. Redireccionar tras 1 segundo
+      // 3. Redireccionar tras 1 segundo
       setTimeout(() => {
         Router.navigateTo('/catalogo');
       }, 1000);

@@ -1,0 +1,9 @@
+fastapi-backend/.venv/
+**/__pycache__/
+**/*.pyc
+.env
+fastapi-backend/.env
+.git/
+.gitignore
+fastapi-backend/static/uploads/products/*
+!fastapi-backend/static/uploads/products/.gitkeep

@@ -1,15 +1,19 @@
 // src/components/navbar.js
 import { store } from '../state/store.js';
 import { Router } from '../router.js';
+import { sanitizeHTML } from '../utils/sanitizer.js';
 
 export function renderNavbar(container) {
   const render = (state) => {
     // Calcule el total de prendas en el carrito
     const cartCount = state.cart.reduce((sum, item) => sum + item.quantity, 0);
+    const isAdmin = state.user?.role === 'admin';
 
     const authLinks = state.isAuthenticated
       ? `
-        <li><span class="user-name">Hola, ${state.user?.email || 'Usuario'}</span></li>
+        ${isAdmin ? '<li><a href="/admin" data-link class="admin-link">⚙️ Admin</a></li>' : ''}
+        <li><a href="/perfil" data-link>Mi Perfil</a></li>
+        <li><span class="user-name">Hola, ${sanitizeHTML(state.user?.email || 'Usuario')}</span></li>
         <li><button id="btn-logout" class="btn-link">Cerrar Sesión</button></li>
       `
       : `
@@ -38,16 +42,16 @@ export function renderNavbar(container) {
         // Borrar tokens físicos
         localStorage.removeItem('access_token');
         localStorage.removeItem('user_data');
-        
+
         // Limpiar estado en memoria
         store.setState({ isAuthenticated: false, user: null, token: null });
-        
+
         // Redirigir
         Router.navigateTo('/login');
       });
     }
   };
-  
+
   render(store.getState());
   store.subscribe(render);
 }
