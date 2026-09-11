@@ -3,7 +3,6 @@ fastapi-backend/.venv/
 **/*.pyc
 .env
 fastapi-backend/.env
+fastapi-backend/firebase-service-account.json
 .git/
 .gitignore
-fastapi-backend/static/uploads/products/*
-!fastapi-backend/static/uploads/products/.gitkeep

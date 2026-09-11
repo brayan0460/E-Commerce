@@ -23,6 +23,5 @@ Thumbs.db
 # Logs
 *.log
 
-# Imágenes subidas por los usuarios (no versionar contenido, sí la carpeta)
-static/uploads/products/*
-!static/uploads/products/.gitkeep
+# Credencial de Firebase (service account) para desarrollo local
+firebase-service-account.json

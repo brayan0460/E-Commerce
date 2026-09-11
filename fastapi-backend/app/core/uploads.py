@@ -1,10 +1,11 @@
 # app/core/uploads.py
-import os
 import uuid
 from fastapi import HTTPException, UploadFile, status
 
-UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "static", "uploads", "products")
+from app.core.firebase import get_bucket
+
 MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB
+STORAGE_FOLDER = "products"
 
 ALLOWED_CONTENT_TYPES = {
     "image/jpeg": ".jpg",
@@ -15,8 +16,8 @@ ALLOWED_CONTENT_TYPES = {
 
 
 async def save_product_image(file: UploadFile) -> str:
-    """Valida y guarda la imagen de un producto. Devuelve la ruta relativa
-    (servida vía StaticFiles en /static) para almacenar en Product.image_url."""
+    """Valida y sube la imagen de un producto a Firebase Storage. Devuelve la
+    URL pública para almacenar en Product.image_url."""
     if file.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -32,12 +33,45 @@ async def save_product_image(file: UploadFile) -> str:
     if len(contents) == 0:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El archivo de imagen está vacío.")
 
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
     extension = ALLOWED_CONTENT_TYPES[file.content_type]
     filename = f"{uuid.uuid4().hex}{extension}"
-    filepath = os.path.join(UPLOAD_DIR, filename)
+    blob_path = f"{STORAGE_FOLDER}/{filename}"
 
-    with open(filepath, "wb") as f:
-        f.write(contents)
+    try:
+        bucket = get_bucket()
+        blob = bucket.blob(blob_path)
+        blob.upload_from_string(contents, content_type=file.content_type)
+        try:
+            # Falla si el bucket tiene "uniform bucket-level access" activado;
+            # en ese caso el acceso público se controla desde el IAM del
+            # bucket (ver README.md) y este error se puede ignorar.
+            blob.make_public()
+        except Exception:
+            pass
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"No se pudo subir la imagen a Firebase Storage: {e}",
+        )
 
-    return f"/static/uploads/products/{filename}"
+    return blob.public_url
+
+
+def delete_product_image(image_url: str | None) -> None:
+    """Borra de Firebase Storage la imagen anterior de un producto, si
+    existe. No lanza excepción si falla, para no romper un update/delete de
+    producto por un problema de limpieza de almacenamiento."""
+    if not image_url:
+        return
+
+    marker = f"/{STORAGE_FOLDER}/"
+    if marker not in image_url:
+        return
+
+    blob_path = f"{STORAGE_FOLDER}/{image_url.split(marker, 1)[1]}"
+    try:
+        get_bucket().blob(blob_path).delete()
+    except Exception:
+        pass

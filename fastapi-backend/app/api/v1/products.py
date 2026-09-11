@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.core.database import get_db
-from app.core.uploads import save_product_image
+from app.core.uploads import save_product_image, delete_product_image
 from app.models.product_model import Product
 from app.models.user_model import User
 from app.schemas.product_schema import ProductResponse
@@ -95,6 +95,7 @@ async def update_product(
     if product is None:
         raise HTTPException(status_code=404, detail="Producto no encontrado.")
 
+    previous_image_url = product.image_url
     if image is not None:
         product.image_url = await save_product_image(image)
 
@@ -111,6 +112,10 @@ async def update_product(
     except Exception:
         await db.rollback()
         raise HTTPException(status_code=500, detail="Error de persistencia de datos.")
+
+    if image is not None and previous_image_url != product.image_url:
+        delete_product_image(previous_image_url)
+
     return product
 
 
@@ -124,9 +129,12 @@ async def delete_product(
     if product is None:
         raise HTTPException(status_code=404, detail="Producto no encontrado.")
 
+    image_url = product.image_url
     await db.delete(product)
     try:
         await db.commit()
     except Exception:
         await db.rollback()
         raise HTTPException(status_code=500, detail="Error al eliminar el producto.")
+
+    delete_product_image(image_url)

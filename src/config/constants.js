@@ -3,8 +3,10 @@
 export const API_BASE_URL = '';
 export const PLACEHOLDER_IMAGE = './assets/images/placeholder.svg';
 
-// El backend guarda las imágenes subidas como rutas relativas (/static/...).
-// Si en algún momento se usa una URL externa completa, se respeta tal cual.
+// El backend sube las imágenes de productos a Firebase Storage y guarda la
+// URL pública completa en Product.image_url, así que normalmente no hace
+// falta prefijo. Se mantiene el fallback relativo por compatibilidad con
+// datos antiguos.
 export function resolveImageUrl(path) {
   if (!path) return PLACEHOLDER_IMAGE;
   if (path.startsWith('http://') || path.startsWith('https://')) return path;

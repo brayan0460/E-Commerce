@@ -7,7 +7,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-insecure-key-change-me")
+# Sin default inseguro a propósito: si falta, el proceso no debe arrancar en
+# ningún entorno (local o producción) en vez de firmar tokens con una clave
+# conocida y compartida por todo el que clone el repo.
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError(
+        "Falta la variable de entorno SECRET_KEY. Genera una con: "
+        "python -c \"import secrets; print(secrets.token_hex(32))\" "
+        "y agrégala a tu .env (ver fastapi-backend/.env.example)."
+    )
+
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 

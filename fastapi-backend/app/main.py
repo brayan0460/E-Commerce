@@ -15,13 +15,13 @@ BACKEND_DIR = os.path.dirname(os.path.dirname(__file__))  # .../fastapi-backend
 # nivel arriba de fastapi-backend/. Servirlo desde el mismo proceso FastAPI
 # evita CORS y permite desplegar todo como un único servicio (más barato/simple).
 FRONTEND_DIR = os.path.dirname(BACKEND_DIR)
-STATIC_DIR = os.path.join(BACKEND_DIR, "static")
 INDEX_HTML = os.path.join(FRONTEND_DIR, "index.html")
+
+ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "").split(",") if origin.strip()]
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    os.makedirs(os.path.join(STATIC_DIR, "uploads", "products"), exist_ok=True)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await run_startup_migrations(conn)
@@ -31,16 +31,19 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="API Tienda de Ropa", version="1.1.0", lifespan=lifespan)
 
+# El frontend consume la API desde el mismo origen (ver src/config/constants.js),
+# así que en producción no se necesitan orígenes cruzados: ALLOWED_ORIGINS queda
+# vacío por defecto y CORS solo se abre si se define explícitamente (útil para
+# levantar el frontend con un dev server aparte, ej. Live Server en :5500).
+# No usamos allow_credentials porque la autenticación va por header
+# Authorization (Bearer), no por cookies.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Imágenes subidas por el panel de administración
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 # Rutas de la API (deben registrarse antes que el catch-all del frontend)
 app.include_router(auth_router)
