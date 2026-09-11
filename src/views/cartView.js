@@ -33,7 +33,11 @@ export function renderCartView(container) {
               <div class="item-details">
                 <h4>${sanitizeHTML(item.name)}</h4>
                 <p>Precio: $${item.price.toLocaleString('es-CL')}</p>
-                <p>Cantidad: ${item.quantity}</p>
+                <div class="qty-control">
+                  <button class="btn-qty btn-qty-minus" data-id="${item.id}" aria-label="Disminuir cantidad">−</button>
+                  <span class="qty-value">${item.quantity}</span>
+                  <button class="btn-qty btn-qty-plus" data-id="${item.id}" aria-label="Aumentar cantidad" ${item.quantity >= item.stock ? 'disabled' : ''}>+</button>
+                </div>
                 <p>Subtotal: $${(item.price * item.quantity).toLocaleString('es-CL')}</p>
               </div>
               <button class="btn-remove" data-id="${item.id}">Eliminar</button>
@@ -52,9 +56,26 @@ export function renderCartView(container) {
 
     // Escuchadores de eventos dentro del carrito
     container.querySelector('.cart-list').addEventListener('click', (e) => {
-      if (e.target.classList.contains('btn-remove')) {
-        const id = parseInt(e.target.getAttribute('data-id'), 10);
+      const removeBtn = e.target.closest('.btn-remove');
+      if (removeBtn) {
+        const id = parseInt(removeBtn.getAttribute('data-id'), 10);
         store.removeFromCart(id);
+        return;
+      }
+
+      const minusBtn = e.target.closest('.btn-qty-minus');
+      if (minusBtn) {
+        const id = parseInt(minusBtn.getAttribute('data-id'), 10);
+        const item = store.getState().cart.find((i) => i.id === id);
+        if (item) store.updateQuantity(id, item.quantity - 1);
+        return;
+      }
+
+      const plusBtn = e.target.closest('.btn-qty-plus');
+      if (plusBtn) {
+        const id = parseInt(plusBtn.getAttribute('data-id'), 10);
+        const item = store.getState().cart.find((i) => i.id === id);
+        if (item) store.updateQuantity(id, Math.min(item.quantity + 1, item.stock ?? Infinity));
       }
     });
 

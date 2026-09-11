@@ -8,6 +8,9 @@
 // ==============================================================================
 
 import { API_BASE_URL } from '../config/constants.js';
+import { store } from '../state/store.js';
+import { Router } from '../router.js';
+import { showToast } from '../components/toast.js';
 
 export class ApiService {
   static async request(endpoint, options = {}) {
@@ -35,10 +38,21 @@ export class ApiService {
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
 
-      // Si el backend responde con 401 Unauthorized, el token expiró o es inválido
+      // Si el backend responde con 401 Unauthorized, el token expiró o es inválido.
+      // Solo forzamos logout/redirect si HABÍA una sesión activa: un 401 al
+      // intentar iniciar sesión con credenciales incorrectas no debe expulsar
+      // al usuario, solo mostrar el error en el propio formulario.
       if (response.status === 401) {
+        const hadSession = store.getState().isAuthenticated;
+
         localStorage.removeItem('access_token');
         localStorage.removeItem('user_data');
+        store.setState({ isAuthenticated: false, user: null, token: null });
+
+        if (hadSession) {
+          showToast('Tu sesión expiró. Inicia sesión de nuevo.', 'error');
+          Router.navigateTo('/login');
+        }
       }
 
       if (!response.ok) {

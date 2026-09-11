@@ -52,6 +52,20 @@ class Store {
     this.setState({ cart: currentCart });
   }
 
+  updateQuantity(productId, quantity) {
+    if (quantity <= 0) {
+      this.removeFromCart(productId);
+      return;
+    }
+
+    const currentCart = [...this.state.cart];
+    const index = currentCart.findIndex(item => item.id === productId);
+    if (index === -1) return;
+
+    currentCart[index] = { ...currentCart[index], quantity };
+    this.setState({ cart: currentCart });
+  }
+
   removeFromCart(productId) {
     const updatedCart = this.state.cart.filter(item => item.id !== productId);
     this.setState({ cart: updatedCart });
